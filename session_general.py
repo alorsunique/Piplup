@@ -1,5 +1,7 @@
 import os
 from datetime import datetime
+from pathlib import Path
+
 
 from instaloader import Instaloader
 
@@ -8,11 +10,12 @@ import utility_pack as up
 # Here the Otter directory is determined
 # This project and the Otter folder must be in the same directory
 
-project_dir = os.getcwd()
+project_dir = Path.cwd()
 
-split = project_dir.rfind("\\")
-above_dir = project_dir[0: split + 1]
-otter_dir = os.path.join(above_dir, "Otter")
+current_dir = project_dir
+current_dir = current_dir.parent.parent
+
+otter_dir = current_dir / "Otter"
 
 now = datetime.now()
 current_time = now.strftime("%H:%M:%S")

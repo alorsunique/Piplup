@@ -1,3 +1,5 @@
+# Script taken from Instaloader devs
+
 from argparse import ArgumentParser
 from glob import glob
 from os.path import expanduser

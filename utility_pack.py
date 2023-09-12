@@ -18,7 +18,7 @@ def account_dictionary(directory):
             account_dict[account] = division_dir
             account_list.append(account)
 
-    account_list = sorted(account_list)
+    # account_list = sorted(account_list)
 
     return account_dict, account_list
 
@@ -99,7 +99,8 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker):
                 break
             except:
                 print(f"Did not catch that")
-        counter, new_dl_count, wait_time = dp.post_compare_download(L_instance, account, offline_list, dl_max, net_counter,max_pass)
+        counter, new_dl_count, wait_time = dp.post_compare_download(L_instance, account, offline_list, dl_max,
+                                                                    net_counter, max_pass)
     elif dl_type == 3:
         dl_max = 65536
         counter, new_dl_count, wait_time = dp.post_lead_update(L_instance, account, dl_max, net_counter)
@@ -107,7 +108,6 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker):
         offline_list = offline_post_check(account, account_dict, L_checker)
         counter, new_dl_count, wait_time = dp.post_compare_update(L_instance, account, offline_list, dl_max,
                                                                   net_counter)
-
 
     sys.stdout.write(f"\r\n")
     print("Account Done")
@@ -236,3 +236,27 @@ def profile_sweep(project_dir, account_dict, account_list, net_counter, L_instan
 
         if continueCondition == "n":
             break
+
+
+def print_size(size):
+
+    print_size = float(size)
+
+    partition_count = 0
+
+    while print_size >= 1000:
+        print_size /= 1000
+        partition_count += 1
+
+    if partition_count == 0:
+        partition_text = "B"
+    elif partition_count == 1:
+        partition_text = "KB"
+    elif partition_count == 2:
+        partition_text = "MB"
+    elif partition_count == 3:
+        partition_text = "GB"
+
+    print_size_string = f"{round(print_size, 2)} {partition_text}"
+
+    return print_size_string
