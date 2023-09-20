@@ -50,12 +50,16 @@ directory_count = 0
 directory_len = len(directory_list)
 
 error_count = 0
+
+global_account_list = []
+
 for directory in directory_list:
     directory_count += 1
     valid_account_list = []
 
     for account in directory.iterdir():
         valid_account_list.append(account)
+        global_account_list.append(account.name)
 
     valid_count = 0
     valid_account_len = len(valid_account_list)
@@ -120,7 +124,23 @@ for directory in directory_list:
         json.dump(clean_pack, json_file)
         json_file.close()
 
-    sys.stdout.write(f"\rComplete. Corrupted Images Found: {error_count}\n")
+sys.stdout.write(f"\rComplete. Corrupted Images Found: {error_count}\n")
+
+pass_list = []
+
+for file in pass_dir.iterdir():
+    pass_list.append(file.stem)
+
+set_global = set(global_account_list)
+set_pass = set(pass_list)
+difference_list = list(set_pass.difference(set_global))
+
+for entry in difference_list:
+    profile_JSON_dir = pass_dir / f"{entry}.json"
+
+    if profile_JSON_dir.exists():
+        print(f"Removing Legacy JSON: {entry}")
+        os.remove(str(profile_JSON_dir))
 
 corrupted_object.close()
 
