@@ -1,10 +1,14 @@
-import os
-import time
-import sys
+# Package containing most of the functionality
 
+import os
+import sys
+import time
+from pathlib import Path
+
+from instaloader import Profile
 from instaloader import load_structure_from_file
 
-import download_pack as dp
+from Modules import download_pack as dp
 
 
 # Creates a dictionary of all available profiles in the directory
@@ -44,16 +48,41 @@ def offline_post_check(account, account_dict, L_instance):
     return offline_list
 
 
+def update_folder(L_instance, account):
+    print(f"Working directory: {Path.cwd()}")
+
+    folder_dir = Path.cwd() / account
+    id_dir = folder_dir / "id"
+
+    with open(id_dir, "r") as id_file:
+        id_number = id_file.readline()
+
+    username = Profile.from_id(L_instance.context, id_number).username
+
+    print(f"Username: {username}")
+
+    if username == account:
+        print(f"Username retained")
+    else:
+        print(f"Username mismatch. Renaming {account} to {username}")
+        folder_dir.rename(username)
+        account = username
+
+    return account
+
+
 def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker):
     account = input("Target: ")
 
-    condition_new_account = True
+    condition_new_account = True  # Assumes target is a new account
 
     if account in account_dict:
         os.chdir(account_dict.get(account))
-
-        condition_new_account = False
+        condition_new_account = False  # False indicates a folder is already in the drive
     else:
+
+        # In here, the proper division is selected for the new account
+
         division_list = os.listdir(otter_dir)
         print(f"Available division")
         count = 0
@@ -71,6 +100,7 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker):
 
         os.chdir(os.path.join(otter_dir, download_division))
 
+    # Gets the total post to be downloaded
     while True:
         try:
             dl_max = int(input("Total posts to be downloaded: "))
@@ -78,36 +108,43 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker):
         except:
             print(f"Did not catch that")
 
+    # Gets the download type
     while True:
         try:
             if not condition_new_account:
-                dl_type = int(input("1. Run Through. 2. Compare Run 3. Lead Update. 4. Comparison Update: "))
-            else:
-                dl_type = int(input("1. Run Through. 2. Compare Run 3. Lead Update: "))
-            if dl_type >= 1 and dl_type <= 4:
+                dl_type = int(input("1. Run Through | 2. Update | Input: "))
+            else:  # If not a new account, download will default to run through
+                dl_type = 1
+            if dl_type >= 1 and dl_type <= 2:
                 break
         except:
             print(f"Did not catch that")
 
     if dl_type == 1:
-        counter, new_dl_count, wait_time = dp.post_download(L_instance, account, dl_max, net_counter)
-    if dl_type == 2:
-        offline_list = offline_post_check(account, account_dict, L_checker)
-        while True:
-            try:
-                max_pass = int(input(f"Pass Amount: "))
-                break
-            except:
-                print(f"Did not catch that")
+        if not condition_new_account:
+            offline_list = offline_post_check(account, account_dict, L_checker)
+            account = update_folder(L_instance, account)
+            while True:
+                try:
+                    # How many posts to be skipped before compare download becomes regular download
+                    max_pass = int(input(f"Pass Amount: "))
+                    break
+                except:
+                    print(f"Did not catch that")
+        else:  # Account is new
+            max_pass = -1  # Minimum integer value to make the code run
+            offline_list = []  # Still need to pass a list but is empty because of new account
+
         counter, new_dl_count, wait_time = dp.post_compare_download(L_instance, account, offline_list, dl_max,
                                                                     net_counter, max_pass)
-    elif dl_type == 3:
-        dl_max = 65536
-        counter, new_dl_count, wait_time = dp.post_lead_update(L_instance, account, dl_max, net_counter)
-    elif dl_type == 4 and not condition_new_account:
+    elif dl_type == 2:
         offline_list = offline_post_check(account, account_dict, L_checker)
+        # How many posts to be skipped before the update terminates if the next post is already downloaded
+        # Basically the lead update code if pass amount is set to 3
+        max_dl_skip = int(input(f"Pass Amount: "))
+        account = update_folder(L_instance, account)
         counter, new_dl_count, wait_time = dp.post_compare_update(L_instance, account, offline_list, dl_max,
-                                                                  net_counter)
+                                                                  net_counter, max_dl_skip)
 
     sys.stdout.write(f"\r\n")
     print("Account Done")
@@ -115,10 +152,11 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker):
     print("Total Wait Time: " + str(wait_time) + " Seconds")
 
 
+# Profile sweep will be updated to be a division sweep in the next update of this code
 def profile_sweep(project_dir, account_dict, account_list, net_counter, L_instance, L_checker):
     info_text = ["Run Through.txt", "Lead Update.txt", "Compare Update.txt"]
 
-    info_dir = os.path.join(project_dir, "Information")
+    info_dir = os.path.join(project_dir, "../Information")
     os.chdir(info_dir)
 
     # Create missing text file if needed
@@ -238,8 +276,8 @@ def profile_sweep(project_dir, account_dict, account_list, net_counter, L_instan
             break
 
 
+# Will return the size of the folder of an account
 def print_size(size):
-
     print_size = float(size)
 
     partition_count = 0
