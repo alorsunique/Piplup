@@ -3,7 +3,9 @@
 import os
 import sys
 import time
+import tkinter as tk
 from pathlib import Path
+from tkinter import messagebox
 
 from instaloader import Profile
 from instaloader import load_structure_from_file
@@ -16,13 +18,10 @@ def account_dictionary(directory):
     account_dict = dict()
     account_list = []
 
-    for division in os.listdir(directory):
-        division_dir = os.path.join(directory, division)
-        for account in os.listdir(division_dir):
-            account_dict[account] = division_dir
-            account_list.append(account)
-
-    # account_list = sorted(account_list)
+    for division in directory.iterdir():
+        for account in division.iterdir():
+            account_dict[account.name] = division
+            account_list.append(account.name)
 
     return account_dict, account_list
 
@@ -32,18 +31,16 @@ def account_dictionary(directory):
 def offline_post_check(account, account_dict, L_instance):
     L = L_instance
     division_dir = account_dict.get(account)
-    account_dir = os.path.join(division_dir, account)
+    account_dir = division_dir / account
 
     offline_list = []
 
-    for file in os.listdir(account_dir):
-        if ".json.xz" in file:
-            file_dir = os.path.join(account_dir, file)
-
-            structure = load_structure_from_file(L.context, file_dir)
+    for file in account_dir.iterdir():
+        if ".json.xz" in file.name:
+            structure = load_structure_from_file(L.context, str(file))
 
             if "Post" in str(structure):
-                offline_list.append(load_structure_from_file(L.context, file_dir))
+                offline_list.append(structure)
 
     return offline_list
 
@@ -59,7 +56,7 @@ def update_folder(L_instance, account):
 
     username = Profile.from_id(L_instance.context, id_number).username
 
-    print(f"Username: {username}")
+    print(f"Current username: {username}")
 
     if username == account:
         print(f"Username retained")
@@ -82,8 +79,9 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker):
     else:
 
         # In here, the proper division is selected for the new account
-
-        division_list = os.listdir(otter_dir)
+        division_list = []
+        for division in otter_dir.iterdir():
+            division_list.append(division.name)
         print(f"Available division")
         count = 0
         for entry in division_list:
@@ -98,7 +96,8 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker):
             except:
                 print(f"Did not catch that")
 
-        os.chdir(os.path.join(otter_dir, download_division))
+        division_dir = otter_dir / download_division
+        os.chdir(division_dir)
 
     # Gets the total post to be downloaded
     while True:
@@ -148,50 +147,57 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker):
 
     sys.stdout.write(f"\r\n")
     print("Account Done")
-    print("Post Downloaded: " + str(new_dl_count))
-    print("Total Wait Time: " + str(wait_time) + " Seconds")
+    print(f"Post Downloaded: {new_dl_count}")
+    print(f"Total Wait Time: {wait_time} Seconds")
 
 
 # Profile sweep will be updated to be a division sweep in the next update of this code
-def profile_sweep(project_dir, account_dict, account_list, net_counter, L_instance, L_checker):
-    info_text = ["Run Through.txt", "Lead Update.txt", "Compare Update.txt"]
+def profile_sweep(resources_dir, otter_dir, account_dict, account_list, net_counter, L_instance, L_checker):
+    sweep_box = tk.Tk()
+    sweep_box.wm_attributes("-topmost", 1)
+    sweep_box.withdraw()
 
-    info_dir = os.path.join(project_dir, "../Information")
-    os.chdir(info_dir)
+    division_list = []
+
+    for division in otter_dir.iterdir():
+        division_list.append(f"{division.name}.txt")
 
     # Create missing text file if needed
 
-    for entry in info_text:
-        if not os.path.exists(os.path.join(info_dir, entry)):
-            with open(entry, 'w') as writer:
+    sweep_dir = resources_dir / "Sweep"
+    if not sweep_dir.exists():
+        os.mkdir(sweep_dir)
+
+    for entry in division_list:
+        text_path = sweep_dir / entry
+        if not text_path.exists():
+            with open(text_path, "w") as writer:
                 writer.close()
 
     last_entry_list = []
 
-    for entry in info_text:
-        with open(entry, 'r') as reader:
+    for text in sweep_dir.iterdir():
+        with open(text, 'r') as reader:
             last_entry_list.append(reader.read())
             reader.close()
 
-    print(f"Run Through: {last_entry_list[0]}")
-    print(f"Lead Update: {last_entry_list[1]}")
-    print(f"Compare Update: {last_entry_list[2]}")
-
     while True:
         try:
-
-            print(f"Now select which sweep to continue")
-            print(f"1: Run Through")
-            print(f"2: Lead Update")
-            print(f"3: Compare Update")
-
+            print(f"Division List")
+            for entry in division_list:
+                division_index = division_list.index(entry)
+                print(f"{division_index + 1} | {entry.removesuffix('.txt')} | {last_entry_list[division_index]}")
             choice = int(input("Select: "))
 
-            if choice >= 1 and choice <= 3:
+            if choice >= 1 and choice <= len(division_list):
                 break
-
         except:
             print(f"Did not catch that")
+
+    work_division = otter_dir / division_list[choice - 1].removesuffix('.txt')
+    account_list = []
+    for account in work_division.iterdir():
+        account_list.append(account.stem)
 
     if not last_entry_list[choice - 1] == '':
         workable_list = account_list[account_list.index(last_entry_list[choice - 1]) + 1:].copy()
@@ -202,18 +208,17 @@ def profile_sweep(project_dir, account_dict, account_list, net_counter, L_instan
     progress_count = 0
     print(f"Length of workable list: {workable_length}")
 
-    exception_list = []
-
     for entry in workable_list:
 
         progress_count += 1
 
-        print("Account: " + entry)
-        print("Current Progress: " + str(progress_count) + "/" + str(workable_length))
+        print(f"Account: {entry}")
+        print(f"Current Progress: {progress_count}/{workable_length}")
 
         while True:
             try:
                 dl_max = int(input("Total posts to be downloaded: "))
+                max_pass = int(input(f"Pass Amount: "))
                 break
             except:
                 print(f"Did not catch that")
@@ -221,42 +226,29 @@ def profile_sweep(project_dir, account_dict, account_list, net_counter, L_instan
         account = entry
         os.chdir(account_dict.get(account))
 
-        if choice == 1:
-            try:
-                counter, new_dl_count, wait_time = dp.post_download(L_instance, account, dl_max, net_counter)
-            except:
-                new_dl_count = 0
-                exception_list.append(entry)
-
-        elif choice == 2:
-            dl_max = 65536
-            try:
-                counter, new_dl_count, wait_time = dp.post_lead_update(L_instance, account, dl_max, net_counter)
-            except:
-                new_dl_count = 0
-                exception_list.append(entry)
-        elif choice == 3:
-            try:
-                offline_list = offline_post_check(account, account_dict, L_checker)
-                counter, new_dl_count, wait_time = dp.post_compare_update(L_instance, account, offline_list, dl_max,
-                                                                          net_counter)
-            except:
-                new_dl_count = 0
-                exception_list.append(entry)
+        offline_list = offline_post_check(account, account_dict, L_checker)
+        account = update_folder(L_instance, account)
+        counter, new_dl_count, wait_time = dp.post_compare_update(L_instance, account, offline_list, dl_max,
+                                                                  net_counter, max_pass)
 
         sys.stdout.write(f"\r\n")
         print("Account Done")
-        print("Post Downloaded: " + str(new_dl_count))
-        print("Total Wait Time: " + str(wait_time) + " Seconds")
+        print(f"Post Downloaded: {new_dl_count}")
+        print(f"Total Wait Time: {wait_time} Seconds")
 
-        os.chdir(info_dir)
+        messagebox.showinfo(f"Sweep", f"{account} Done", parent=sweep_box)
 
-        if os.path.exists(os.path.join(info_dir, info_text[choice - 1])):
-            os.remove(os.path.join(info_dir, info_text[choice - 1]))
+        text_path = sweep_dir / division_list[choice - 1]
 
-        with open(info_text[choice - 1], 'w') as writer:
-            writer.write(entry)
-            writer.close()
+        if text_path.exists():
+            os.remove(text_path)
+
+        is_last = workable_list[-1] == entry
+
+        if not is_last:
+            with open(text_path, 'w') as writer:
+                writer.write(account)
+                writer.close()
 
         sleep_second = 30
 
@@ -274,6 +266,8 @@ def profile_sweep(project_dir, account_dict, account_list, net_counter, L_instan
 
         if continueCondition == "n":
             break
+
+    sweep_box.destroy()
 
 
 # Will return the size of the folder of an account
