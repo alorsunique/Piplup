@@ -7,6 +7,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox
 
+import pandas as pd
 from instaloader import Profile
 from instaloader import load_structure_from_file
 
@@ -68,7 +69,17 @@ def update_folder(L_instance, account):
     return account
 
 
-def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker):
+def update_catalog(catalog_file, old_user, new_user):
+    import_dataframe = pd.read_excel(catalog_file)
+    import_dataframe = import_dataframe.replace(old_user, new_user)
+    input_list = import_dataframe.values.tolist()
+    updated_list = division_list_sort(input_list)
+    updated_dataframe = pd.DataFrame(updated_list, columns=['Account', 'Division', 'Create Status'])
+    os.remove(catalog_file)
+    updated_dataframe.to_excel(catalog_file, sheet_name='Catalog', index=False)
+
+
+def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker, catalog_file):
     account = input("Target: ")
 
     condition_new_account = True  # Assumes target is a new account
@@ -122,7 +133,10 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker):
     if dl_type == 1:
         if not condition_new_account:
             offline_list = offline_post_check(account, account_dict, L_checker)
+            old_user = account
             account = update_folder(L_instance, account)
+            if account != old_user:
+                update_catalog(catalog_file, old_user, account)
             while True:
                 try:
                     # How many posts to be skipped before compare download becomes regular download
@@ -141,7 +155,10 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker):
         # How many posts to be skipped before the update terminates if the next post is already downloaded
         # Basically the lead update code if pass amount is set to 3
         max_dl_skip = int(input(f"Pass Amount: "))
+        old_user = account
         account = update_folder(L_instance, account)
+        if account != old_user:
+            update_catalog(catalog_file, old_user, account)
         counter, new_dl_count, wait_time = dp.post_compare_update(L_instance, account, offline_list, dl_max,
                                                                   net_counter, max_dl_skip)
 
@@ -152,7 +169,7 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker):
 
 
 # Profile sweep will be updated to be a division sweep in the next update of this code
-def profile_sweep(resources_dir, otter_dir, account_dict, account_list, net_counter, L_instance, L_checker):
+def profile_sweep(resources_dir, otter_dir, account_dict, net_counter, L_instance, L_checker, catalog_file):
     sweep_box = tk.Tk()
     sweep_box.wm_attributes("-topmost", 1)
     sweep_box.withdraw()
@@ -197,7 +214,7 @@ def profile_sweep(resources_dir, otter_dir, account_dict, account_list, net_coun
     work_division = otter_dir / division_list[choice - 1].removesuffix('.txt')
     account_list = []
     for account in work_division.iterdir():
-        account_list.append(account.stem)
+        account_list.append(account.name)
 
     if not last_entry_list[choice - 1] == '':
         workable_list = account_list[account_list.index(last_entry_list[choice - 1]) + 1:].copy()
@@ -227,7 +244,10 @@ def profile_sweep(resources_dir, otter_dir, account_dict, account_list, net_coun
         os.chdir(account_dict.get(account))
 
         offline_list = offline_post_check(account, account_dict, L_checker)
+        old_user = account
         account = update_folder(L_instance, account)
+        if account != old_user:
+            update_catalog(catalog_file, old_user, account)
         counter, new_dl_count, wait_time = dp.post_compare_update(L_instance, account, offline_list, dl_max,
                                                                   net_counter, max_pass)
 
@@ -235,8 +255,6 @@ def profile_sweep(resources_dir, otter_dir, account_dict, account_list, net_coun
         print("Account Done")
         print(f"Post Downloaded: {new_dl_count}")
         print(f"Total Wait Time: {wait_time} Seconds")
-
-        messagebox.showinfo(f"Sweep", f"{account} Done", parent=sweep_box)
 
         text_path = sweep_dir / division_list[choice - 1]
 
@@ -255,7 +273,16 @@ def profile_sweep(resources_dir, otter_dir, account_dict, account_list, net_coun
         print(f"Waiting for {sleep_second} seconds")
         time.sleep(sleep_second)
 
+        messagebox.showinfo(f"Sweep", f"{account} Done", parent=sweep_box)
+
+        next_index = workable_list.index(entry) + 1
+        if next_index == len(workable_list):
+            next_entry = None
+        else:
+            next_entry = workable_list[next_index]
+
         while True:
+            print(f"Next Account: {next_entry}")
             continueCondition = input(f"Continue Y/N: ").lower()
             if continueCondition == "y":
                 break
@@ -292,3 +319,23 @@ def print_size(size):
     print_size_string = f"{round(print_size, 2)} {partition_text}"
 
     return print_size_string
+
+
+def division_list_sort(input_list):
+    unique_division = []
+    for entry in input_list:
+        if entry[1] not in unique_division:
+            unique_division.append(entry[1])
+
+    unique_division = sorted(unique_division)
+    updated_list = []
+
+    for division in unique_division:
+        division_list = []
+        for entry in input_list:
+            if entry[1] == division:
+                division_list.append(entry)
+        division_list.sort(key=lambda x: x[0])
+        updated_list.extend(division_list)
+
+    return updated_list
