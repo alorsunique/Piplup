@@ -17,7 +17,7 @@ print(f"Session Start Time: {current_time}")
 
 # Setting up the directories
 
-project_dir = Path.cwd()
+project_dir = Path.cwd().parent
 upper_dir = project_dir.parent.parent
 otter_dir = upper_dir / "Otter"
 resources_dir = upper_dir / "PycharmProjects Resources" / "Piplup Resources"
