@@ -33,7 +33,7 @@ def long_pause():  # Pause in minutes
 # Post compare download will download everything until the max download is achieved
 # A skip option can be added to skip N amount of files that are downloaded
 # Not skipping the files can also be done to verify if everything under that post got downloaded
-def post_compare_download(L_instance, account, offline_list, max_dl, net_counter, max_pass):
+def post_compare_download(L_instance, account, offline_list, invalid_list, max_dl, net_counter, max_pass):
     profile = Profile.from_username(L_instance.context, account)  # Retrieve profile of account
 
     L_instance.save_profile_id(profile)  # Download the profile ID
@@ -56,23 +56,29 @@ def post_compare_download(L_instance, account, offline_list, max_dl, net_counter
 
         # This allows downloading of new post before hitting the pass condition. This is because more recent posts
         # are not going to be on the offline list and will be skipped without this segment.
-        if post not in offline_list and not pass_condition:
-            L_instance.download_post(post, account)
 
-            new_dl_count += 1
-            net_counter[0] += 1
-            print(f"New Download. Download from account: {new_dl_count} | Download from session: {net_counter[0]}")
+        string_post = str(post)
 
-            if check_new_dl_count < up_new_dl:
-                check_new_dl_count += 1
-                time_sleep = short_pause()
-                wait_time += time_sleep
-                net_counter[1] += time_sleep
+        if post not in offline_list and string_post not in invalid_list and not pass_condition:
+            if string_post not in invalid_list:
+                L_instance.download_post(post, account)
+
+                new_dl_count += 1
+                net_counter[0] += 1
+                print(f"New Download. Download from account: {new_dl_count} | Download from session: {net_counter[0]}")
+
+                if check_new_dl_count < up_new_dl:
+                    check_new_dl_count += 1
+                    time_sleep = short_pause()
+                    wait_time += time_sleep
+                    net_counter[1] += time_sleep
+                else:
+                    check_new_dl_count = 1
+                    time_sleep = long_pause()
+                    wait_time += time_sleep
+                    net_counter[1] += time_sleep
             else:
-                check_new_dl_count = 1
-                time_sleep = long_pause()
-                wait_time += time_sleep
-                net_counter[1] += time_sleep
+                print(f"\nInvalid: {string_post}")
 
         else:
             pass_count += 1
@@ -130,7 +136,7 @@ def post_compare_download(L_instance, account, offline_list, max_dl, net_counter
 
 # Post compare update is used to update profiles. It can be used for almost all purposes except
 # when verifying that all files under a post have been downloaded
-def post_compare_update(L_instance, account, offline_list, max_dl, net_counter, max_dl_skip):
+def post_compare_update(L_instance, account, offline_list, invalid_list, max_dl, net_counter, max_dl_skip):
     profile = Profile.from_username(L_instance.context, account)
 
     L_instance.save_profile_id(profile)
@@ -143,25 +149,31 @@ def post_compare_update(L_instance, account, offline_list, max_dl, net_counter, 
     check_new_dl_count = 1
 
     for post in profile.get_posts():
+
+        string_post = str(post)
+
         if post not in offline_list:
-            sys.stdout.write(f"\r\n")
-            print(f"Post: {post}")
-            L_instance.download_post(post, account)
+            if string_post not in invalid_list:
+                sys.stdout.write(f"\r\n")
+                print(f"Post: {post}")
+                L_instance.download_post(post, account)
 
-            new_dl_count += 1
-            net_counter[0] += 1
-            print(f"New Download. Download from account: {new_dl_count} | Download from session: {net_counter[0]}")
+                new_dl_count += 1
+                net_counter[0] += 1
+                print(f"New Download. Download from account: {new_dl_count} | Download from session: {net_counter[0]}")
 
-            if check_new_dl_count < up_new_dl:
-                check_new_dl_count += 1
-                time_sleep = short_pause()
-                wait_time += time_sleep
-                net_counter[1] += time_sleep
+                if check_new_dl_count < up_new_dl:
+                    check_new_dl_count += 1
+                    time_sleep = short_pause()
+                    wait_time += time_sleep
+                    net_counter[1] += time_sleep
+                else:
+                    check_new_dl_count = 1
+                    time_sleep = long_pause()
+                    wait_time += time_sleep
+                    net_counter[1] += time_sleep
             else:
-                check_new_dl_count = 1
-                time_sleep = long_pause()
-                wait_time += time_sleep
-                net_counter[1] += time_sleep
+                print(f"\nInvalid: {string_post}")
 
         else:
             done_dl_count += 1

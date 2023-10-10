@@ -46,6 +46,16 @@ def offline_post_check(account, account_dict, L_instance):
     return offline_list
 
 
+def load_invalid_list(directory):
+    incomplete_dataframe = pd.read_excel(directory)
+    invalid_list = []
+
+    for index, row in incomplete_dataframe.iterrows():
+        invalid_list.append(row.iloc[1])
+
+    return invalid_list
+
+
 def update_folder(L_instance, account):
     print(f"Working directory: {Path.cwd()}")
 
@@ -79,7 +89,7 @@ def update_catalog(catalog_file, old_user, new_user):
     updated_dataframe.to_excel(catalog_file, sheet_name='Catalog', index=False)
 
 
-def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker, catalog_file):
+def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker, catalog_file, invalid_file):
     account = input("Target: ")
 
     condition_new_account = True  # Assumes target is a new account
@@ -109,6 +119,10 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker, 
 
         division_dir = otter_dir / download_division
         os.chdir(division_dir)
+
+    # Loads the invalid list
+
+    invalid_list = load_invalid_list(invalid_file)
 
     # Gets the total post to be downloaded
     while True:
@@ -148,7 +162,8 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker, 
             max_pass = -1  # Minimum integer value to make the code run
             offline_list = []  # Still need to pass a list but is empty because of new account
 
-        counter, new_dl_count, wait_time = dp.post_compare_download(L_instance, account, offline_list, dl_max,
+        counter, new_dl_count, wait_time = dp.post_compare_download(L_instance, account, offline_list, invalid_list,
+                                                                    dl_max,
                                                                     net_counter, max_pass)
     elif dl_type == 2:
         offline_list = offline_post_check(account, account_dict, L_checker)
@@ -159,7 +174,8 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker, 
         account = update_folder(L_instance, account)
         if account != old_user:
             update_catalog(catalog_file, old_user, account)
-        counter, new_dl_count, wait_time = dp.post_compare_update(L_instance, account, offline_list, dl_max,
+        counter, new_dl_count, wait_time = dp.post_compare_update(L_instance, account, offline_list, invalid_list,
+                                                                  dl_max,
                                                                   net_counter, max_dl_skip)
 
     sys.stdout.write(f"\r\n")
@@ -169,7 +185,8 @@ def profile_target(account_dict, otter_dir, net_counter, L_instance, L_checker, 
 
 
 # Profile sweep will be updated to be a division sweep in the next update of this code
-def profile_sweep(resources_dir, otter_dir, account_dict, net_counter, L_instance, L_checker, catalog_file):
+def profile_sweep(resources_dir, otter_dir, account_dict, net_counter, L_instance, L_checker, catalog_file,
+                  invalid_file):
     sweep_box = tk.Tk()
     sweep_box.wm_attributes("-topmost", 1)
     sweep_box.withdraw()
@@ -197,6 +214,10 @@ def profile_sweep(resources_dir, otter_dir, account_dict, net_counter, L_instanc
         with open(text, 'r') as reader:
             last_entry_list.append(reader.read())
             reader.close()
+
+    # Loads invalid list
+
+    invalid_list = load_invalid_list(invalid_file)
 
     while True:
         try:
@@ -248,7 +269,8 @@ def profile_sweep(resources_dir, otter_dir, account_dict, net_counter, L_instanc
         account = update_folder(L_instance, account)
         if account != old_user:
             update_catalog(catalog_file, old_user, account)
-        counter, new_dl_count, wait_time = dp.post_compare_update(L_instance, account, offline_list, dl_max,
+        counter, new_dl_count, wait_time = dp.post_compare_update(L_instance, account, offline_list, invalid_list,
+                                                                  dl_max,
                                                                   net_counter, max_pass)
 
         sys.stdout.write(f"\r\n")
