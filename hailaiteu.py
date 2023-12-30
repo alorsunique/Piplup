@@ -4,6 +4,7 @@ import os
 import time
 from pathlib import Path
 
+import pandas as pd
 from instaloader import Instaloader
 from instaloader import Profile
 from instaloader import load_structure_from_file
@@ -15,10 +16,15 @@ upper_dir = project_dir.parent.parent
 hailaiteu_dir = upper_dir / "Hailaiteu"
 os.chdir(hailaiteu_dir)
 
+resources_dir = upper_dir / "PycharmProjects Resources" / "Piplup Resources"
+invalid_file = resources_dir / "Invalid.xlsx"
+
+invalid_list = up.load_invalid_list(invalid_file)
+
 L_checker = Instaloader()
 L_downloader = Instaloader()
 
-username = "lizyenaliz10"
+username = ("lizyenaliz11")
 L_downloader.load_session_from_file(username)  # Here login with credentials
 
 account = input(f"Input account: ")
@@ -50,8 +56,12 @@ for highlight in L_downloader.get_highlights(profile):
     # highlight is a Highlight object
     for item in highlight.get_items():
         print(item)
-        if item not in offline_list:
-            L_downloader.download_storyitem(item, '{}'.format(highlight.owner_username))
-            time.sleep(5)
+
+        if not str(item) in invalid_list:
+            if item not in offline_list:
+                L_downloader.download_storyitem(item, '{}'.format(highlight.owner_username))
+                time.sleep(5)
+            else:
+                print("Already downloaded")
         else:
-            print("Already downloaded")
+            print("Invalid highlight")
